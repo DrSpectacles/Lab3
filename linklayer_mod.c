@@ -353,7 +353,7 @@ int LL_receive(byte_t *dataRx, int maxData, int debug)
                                   seqNumRx, expected);
                     // What should be done about this?
 		    sendAck(POSACK, lastSeqRx, debug);
-		    sucess = FALSE;
+		    success = FALSE;
 
                 }  // end of sequence number checking
 
@@ -612,19 +612,20 @@ int sendAck(int type, int seq, int debug)
     byte_t ackFrame[2*ACK_SIZE];  // twice expected frame size, for byte stuff
     int sizeAck = 5; // number of bytes in the ack frame so far
     int retVal; // return value from functions
+    int checkSum = 0;
 
     // First build the frame
     ackFrame[0] = STARTBYTE;
     ackFrame[FRSPOS] =sizeAck;
     ackFrame[SEQNUMPOS] = (byte_t) seq;  // sequence number as given
     checkSum += seq; //sequence number added to checksum
-    checkSum += frameSize; //framesize added to checksum
+    checkSum += sizeAck; //framesize added to checksum
 
     checkSum = checkSum % MODULO; //checksum calculated using MO
     
-    frameTx[HEADERSIZE] = checkSum; // end of frame marker byte
+    ackFrame[HEADERSIZE] = checkSum; // end of frame marker byte
 
-    frameTx[HEADERSIZE+1] = ENDBYTE;
+    ackFrame[HEADERSIZE+1] = ENDBYTE;
 
 
 	// Add more bytes to the frame, and update sizeAck
