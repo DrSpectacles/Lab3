@@ -185,7 +185,7 @@ int LL_send(byte_t *dataTx, int nTXdata, int debug)
                 // If there is more than one type of response, extract the type
                 // Need to check if this is a positive ACK,
                 // and if it relates to the data block just sent...
-                if ( TRUE )  // need a sensible test here!!
+                if ( seqAck == seqNumTx )  // need a sensible test here!!
                 {
                     if (debug) printf("LLS: ACK received, seq %d\n", seqAck);
                     acksRx++;           // increment counter for report
@@ -332,6 +332,7 @@ int LL_receive(byte_t *dataRx, int maxData, int debug)
                     // Maybe send a response to the sender ?
                     // If so, what sequence number ?
                     // See the sendAck() function below.
+		    sendAck(POSACK, seqNumRx, debug); //ADDED
 
                 }
                 else if (seqNumRx == lastSeqRx) // got a duplicate data block
@@ -340,12 +341,19 @@ int LL_receive(byte_t *dataRx, int maxData, int debug)
                                   seqNumRx, expected);
                     // What should be done about this?
 
+		    //overwrite prev sent
+		    success = TRUE;  // job is done
+                    lastSeqRx = seqNumRx;  // update last sequence number
+		    sendAck(POSACK, seqNumRx, debug); //ADDED
+
                 }
                 else // some other data block??
                 {
                     if (debug) printf("LLR: Unexpected block rx seq. %d, expected %d\n",
                                   seqNumRx, expected);
                     // What should be done about this?
+		    sendAck(POSACK, lastSeqRx, debug);
+		    sucess = FALSE;
 
                 }  // end of sequence number checking
 
@@ -602,11 +610,22 @@ int processFrame(byte_t *frameRx, int sizeFrame,
 int sendAck(int type, int seq, int debug)
 {
     byte_t ackFrame[2*ACK_SIZE];  // twice expected frame size, for byte stuff
-    int sizeAck = 0; // number of bytes in the ack frame so far
+    int sizeAck = 5; // number of bytes in the ack frame so far
     int retVal; // return value from functions
 
     // First build the frame
     ackFrame[0] = STARTBYTE;
+    ackFrame[FRSPOS] =sizeAck;
+    ackFrame[SEQNUMPOS] = (byte_t) seq;  // sequence number as given
+    checkSum += seq; //sequence number added to checksum
+    checkSum += frameSize; //framesize added to checksum
+
+    checkSum = checkSum % MODULO; //checksum calculated using MO
+    
+    frameTx[HEADERSIZE] = checkSum; // end of frame marker byte
+
+    frameTx[HEADERSIZE+1] = ENDBYTE;
+
 
 	// Add more bytes to the frame, and update sizeAck
 
